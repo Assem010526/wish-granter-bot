@@ -1,1 +1,1 @@
-worker: python wish_granter_agent.py
+web: python wish_granter_agent.py
