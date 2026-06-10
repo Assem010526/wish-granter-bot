@@ -20,17 +20,48 @@ app = Flask(__name__)
 
 # ===== TELEGRAM =====
 
+# Постоянная клавиатура внизу экрана (всегда видна)
+PERSISTENT_KEYBOARD = {
+    "keyboard": [
+        ["📊 Отчёт", "🎬 Идея видео"],
+        ["💼 Практики продаж", "📈 Анализ рынка"],
+        ["📞 Контакты", "🔥 Мотивация"]
+    ],
+    "resize_keyboard": True,
+    "persistent": True
+}
+
 def send_telegram(message, reply_markup=None):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    data = {"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML"}
-    if reply_markup:
-        data["reply_markup"] = reply_markup
+    data = {
+        "chat_id": CHAT_ID,
+        "text": message,
+        "parse_mode": "HTML",
+        "reply_markup": reply_markup or PERSISTENT_KEYBOARD
+    }
     try:
         r = requests.post(url, json=data, timeout=10)
         return r.ok
     except Exception as e:
         print(f"Ошибка отправки: {e}")
         return False
+
+def setup_bot_commands():
+    """Регистрирует команды в меню бота"""
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/setMyCommands"
+    commands = [
+        {"command": "start", "description": "🚀 Главное меню"},
+        {"command": "report", "description": "📊 Отчёт по Instagram"},
+        {"command": "video", "description": "🎬 Идея видео сегодня"},
+        {"command": "sales", "description": "💼 Практики продаж"},
+        {"command": "market", "description": "📈 Анализ рынка"},
+        {"command": "contacts", "description": "📞 Контакты партнёров"},
+        {"command": "motivation", "description": "🔥 Мотивация дня"},
+    ]
+    try:
+        requests.post(url, json={"commands": commands}, timeout=10)
+    except:
+        pass
 
 def answer_callback(callback_query_id, text="✅"):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/answerCallbackQuery"
@@ -476,22 +507,22 @@ def webhook():
 
 Выбери что тебя интересует 👇"""
                 send_telegram(welcome, main_keyboard())
-            elif "отчет" in text or "отчёт" in text or "/report" in text:
+            elif any(w in text for w in ["отчет", "отчёт", "/report", "📊"]):
                 report = make_report()
-                send_telegram(report, main_keyboard())
-            elif "видео" in text or "video" in text:
-                send_telegram(make_video_idea(), main_keyboard())
-            elif "продаж" in text or "sales" in text:
-                send_telegram(SALES_PRACTICES, main_keyboard())
-            elif "рынок" in text or "анализ" in text:
-                send_telegram(MARKET_ANALYSIS, main_keyboard())
-            elif "контакт" in text or "звонить" in text:
-                send_telegram(CONTACTS_SCRIPT, main_keyboard())
-            elif "мотив" in text:
+                send_telegram(report)
+            elif any(w in text for w in ["видео", "video", "/video", "🎬"]):
+                send_telegram(make_video_idea())
+            elif any(w in text for w in ["продаж", "sales", "/sales", "💼", "практик"]):
+                send_telegram(SALES_PRACTICES)
+            elif any(w in text for w in ["рынок", "анализ", "/market", "📈"]):
+                send_telegram(MARKET_ANALYSIS)
+            elif any(w in text for w in ["контакт", "звонить", "/contacts", "📞"]):
+                send_telegram(CONTACTS_SCRIPT)
+            elif any(w in text for w in ["мотив", "/motivation", "🔥"]):
                 motivation = MOTIVATIONS[datetime.now().day % len(MOTIVATIONS)]
-                send_telegram(f"🔥 <b>Мотивация дня:</b>\n\n{motivation}", main_keyboard())
+                send_telegram(f"🔥 <b>Мотивация дня:</b>\n\n{motivation}")
             else:
-                send_telegram("Выбери действие 👇", main_keyboard())
+                send_telegram("Выбери действие 👇")
 
     return jsonify({"ok": True})
 
@@ -504,5 +535,6 @@ def trigger_report():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
+    setup_bot_commands()
     print(f"🤖 Wish Granter запускается на порту {port}...")
     app.run(host="0.0.0.0", port=port)
