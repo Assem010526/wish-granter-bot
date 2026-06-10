@@ -157,9 +157,15 @@ def webhook():
         chat_id_incoming = data["message"]["chat"]["id"]
         if chat_id_incoming == CHAT_ID:
             if "debug" in text:
-                r1 = requests.get("https://graph.facebook.com/v20.0/me/accounts",
-                    params={"access_token": INSTAGRAM_TOKEN, "fields": "id,name,instagram_business_account"}, timeout=10)
-                send_telegram(f"Pages:\n{r1.text[:1000]}")
+                r1 = requests.get("https://graph.facebook.com/v20.0/me",
+                    params={"access_token": INSTAGRAM_TOKEN, "fields": "id,name"}, timeout=10)
+                send_telegram(f"Me:\n{r1.text[:500]}")
+                r2 = requests.get("https://graph.facebook.com/v20.0/me/instagram_accounts",
+                    params={"access_token": INSTAGRAM_TOKEN, "fields": "id,username,followers_count,media_count"}, timeout=10)
+                send_telegram(f"IG accounts:\n{r2.text[:800]}")
+                r3 = requests.get("https://graph.facebook.com/v20.0/me/accounts",
+                    params={"access_token": INSTAGRAM_TOKEN, "fields": "id,name,instagram_business_account{id,username,followers_count}"}, timeout=10)
+                send_telegram(f"Pages+IG:\n{r3.text[:800]}")
             elif "отчет" in text or "отчёт" in text or "/report" in text or "/start" in text:
                 report = make_report()
                 send_telegram(report)
