@@ -135,7 +135,15 @@ def webhook():
         text = data["message"].get("text", "").lower()
         chat_id_incoming = data["message"]["chat"]["id"]
         if chat_id_incoming == CHAT_ID:
-            if "отчет" in text or "отчёт" in text or "/report" in text or "/start" in text:
+            if "debug" in text:
+                import requests as req
+                r1 = req.get(f"https://graph.facebook.com/v20.0/{INSTAGRAM_ACCOUNT_ID}",
+                    params={"access_token": INSTAGRAM_TOKEN, "fields": "followers_count,media_count,name"}, timeout=10)
+                send_telegram(f"Account API:\n{r1.text[:1000]}")
+                r2 = req.get(f"https://graph.facebook.com/v20.0/{INSTAGRAM_ACCOUNT_ID}/media",
+                    params={"access_token": INSTAGRAM_TOKEN, "fields": "id,like_count", "limit": 3}, timeout=10)
+                send_telegram(f"Media API:\n{r2.text[:1000]}")
+            elif "отчет" in text or "отчёт" in text or "/report" in text or "/start" in text:
                 report = make_report()
                 send_telegram(report)
     return jsonify({"ok": True})
