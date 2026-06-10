@@ -54,8 +54,12 @@ def get_account_info():
     }
     try:
         r = requests.get(url, params=params, timeout=10)
-        return r.json()
-    except:
+        data = r.json()
+        if "error" in data:
+            send_telegram(f"🔴 Instagram API ошибка:\n{data['error'].get('message', str(data['error']))}")
+        return data
+    except Exception as e:
+        send_telegram(f"🔴 Instagram запрос упал: {e}")
         return {}
 
 # ===== ОТЧЁТ =====
