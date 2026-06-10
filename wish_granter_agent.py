@@ -32,8 +32,28 @@ def send_telegram(message):
 
 # ===== INSTAGRAM =====
 
+def get_ig_account_id():
+    """Получаем ID Instagram аккаунта через Facebook Страницу"""
+    global INSTAGRAM_ACCOUNT_ID
+    try:
+        r = requests.get(
+            "https://graph.facebook.com/v20.0/me/accounts",
+            params={"access_token": INSTAGRAM_TOKEN, "fields": "id,name,instagram_business_account"},
+            timeout=10
+        )
+        pages = r.json().get("data", [])
+        for page in pages:
+            ig = page.get("instagram_business_account")
+            if ig:
+                INSTAGRAM_ACCOUNT_ID = ig["id"]
+                return ig["id"]
+    except Exception as e:
+        print(f"Ошибка получения IG ID: {e}")
+    return INSTAGRAM_ACCOUNT_ID
+
 def get_recent_posts():
-    url = f"https://graph.facebook.com/v20.0/{INSTAGRAM_ACCOUNT_ID}/media"
+    ig_id = get_ig_account_id()
+    url = f"https://graph.facebook.com/v20.0/{ig_id}/media"
     params = {
         "access_token": INSTAGRAM_TOKEN,
         "fields": "id,caption,media_type,timestamp,like_count,comments_count",
@@ -43,14 +63,15 @@ def get_recent_posts():
         r = requests.get(url, params=params, timeout=10)
         return r.json().get("data", [])
     except Exception as e:
-        print(f"Ошибка Instagram API: {e}")
+        print(f"Ошибка Instagram media API: {e}")
         return []
 
 def get_account_info():
-    url = f"https://graph.facebook.com/v20.0/{INSTAGRAM_ACCOUNT_ID}"
+    ig_id = get_ig_account_id()
+    url = f"https://graph.facebook.com/v20.0/{ig_id}"
     params = {
         "access_token": INSTAGRAM_TOKEN,
-        "fields": "followers_count,media_count,name"
+        "fields": "followers_count,media_count,name,biography"
     }
     try:
         r = requests.get(url, params=params, timeout=10)
@@ -136,13 +157,9 @@ def webhook():
         chat_id_incoming = data["message"]["chat"]["id"]
         if chat_id_incoming == CHAT_ID:
             if "debug" in text:
-                import requests as req
-                r1 = req.get(f"https://graph.facebook.com/v20.0/{INSTAGRAM_ACCOUNT_ID}",
-                    params={"access_token": INSTAGRAM_TOKEN, "fields": "followers_count,media_count,name"}, timeout=10)
-                send_telegram(f"Account API:\n{r1.text[:1000]}")
-                r2 = req.get(f"https://graph.facebook.com/v20.0/{INSTAGRAM_ACCOUNT_ID}/media",
-                    params={"access_token": INSTAGRAM_TOKEN, "fields": "id,like_count", "limit": 3}, timeout=10)
-                send_telegram(f"Media API:\n{r2.text[:1000]}")
+                r1 = requests.get("https://graph.facebook.com/v20.0/me/accounts",
+                    params={"access_token": INSTAGRAM_TOKEN, "fields": "id,name,instagram_business_account"}, timeout=10)
+                send_telegram(f"Pages:\n{r1.text[:1000]}")
             elif "отчет" in text or "отчёт" in text or "/report" in text or "/start" in text:
                 report = make_report()
                 send_telegram(report)
