@@ -14,9 +14,11 @@ from flask import Flask, request, jsonify
 INSTAGRAM_TOKEN = "IGAAPBaOVtD8NBZAGJmSmFvZAXM5OTBwZAVltaVpteWlNUlpTQi0yMzBtaEY1ZAjdqRHpCYnYyLXBqX2VsMXVKc0poclN3aGhfYXlqX1R4ZA3JnY2w0UU9tZAVdmUFpZAYjBaMV9meERhWHZAyYWhic0wtSTVmSk0zT3JqcmNlckNZAd25jWQZDZD"
 INSTAGRAM_ACCOUNT_ID = "17841465631046584"
 TELEGRAM_TOKEN = "8259042725:AAHWIwIOTo4-zCtBL0klgUZ3-O7K0YqYhwc"
-CHAT_ID = 446497122
+CHAT_ID = 446497122  # Асем Арып — Telegram Chat ID
 
 app = Flask(__name__)
+
+# ===== TELEGRAM =====
 
 def send_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -27,6 +29,8 @@ def send_telegram(message):
     except Exception as e:
         print(f"Ошибка отправки: {e}")
         return False
+
+# ===== INSTAGRAM =====
 
 def get_recent_posts():
     url = f"https://graph.facebook.com/v20.0/{INSTAGRAM_ACCOUNT_ID}/media"
@@ -54,6 +58,8 @@ def get_account_info():
     except:
         return {}
 
+# ===== ОТЧЁТ =====
+
 CONTENT_IDEAS = [
     "🎬 Видео: покажи как аппарат готовит смесь за 30 секунд",
     "👶 Фото: счастливый малыш рядом с аппаратом Balazone",
@@ -68,8 +74,10 @@ CONTENT_IDEAS = [
 def make_report():
     now = datetime.now()
     idea = CONTENT_IDEAS[now.weekday() % len(CONTENT_IDEAS)]
+
     posts = get_recent_posts()
     account = get_account_info()
+
     followers = account.get("followers_count", "—")
     media_count = account.get("media_count", "—")
 
@@ -81,17 +89,18 @@ def make_report():
         type_ru = {"IMAGE": "📷 Фото", "VIDEO": "🎬 Видео", "CAROUSEL_ALBUM": "🖼 Карусель"}.get(best_type, best_type)
         best_date = best.get("timestamp", "")[:10]
         best_caption = (best.get("caption", "") or "")[:60]
+
         stats_text = f"""📈 <b>Статистика аккаунта:</b>
-- Подписчиков: {followers}
-- Всего постов: {media_count}
-- Среднее лайков: {avg_likes:.0f}
-- Среднее комментариев: {avg_comments:.1f}
+• Подписчиков: {followers}
+• Всего постов: {media_count}
+• Среднее лайков: {avg_likes:.0f}
+• Среднее комментариев: {avg_comments:.1f}
 
 🏆 <b>Лучший пост за последнее время:</b>
-- Тип: {type_ru}
-- Лайков: {best.get('like_count', 0)} | Комментариев: {best.get('comments_count', 0)}
-- Дата: {best_date}
-- Текст: {best_caption}..."""
+• Тип: {type_ru}
+• Лайков: {best.get('like_count', 0)} | Комментариев: {best.get('comments_count', 0)}
+• Дата: {best_date}
+• Текст: {best_caption}..."""
     else:
         stats_text = f"📈 Подписчиков: {followers} | Постов: {media_count}"
 
@@ -108,24 +117,30 @@ def make_report():
 
 #balazone #babybrezza #детскаясмесь #кормлениемладенца"""
 
+# ===== FLASK ENDPOINTS =====
+
 @app.route("/", methods=["GET"])
 def home():
     return "Wish Granter Bot is running! 🤖"
 
-@app.route("/webhook", methods=["POST"])
+@app.route(f"/webhook", methods=["POST"])
 def webhook():
+    """Telegram отправляет сюда все сообщения"""
     data = request.get_json()
     if data and "message" in data:
         text = data["message"].get("text", "").lower()
         chat_id_incoming = data["message"]["chat"]["id"]
         if chat_id_incoming == CHAT_ID:
-            if "/отчет" in text or "/report" in text or "/start" in text:
-                send_telegram(make_report())
+            if "отчет" in text or "отчёт" in text or "/report" in text or "/start" in text:
+                report = make_report()
+                send_telegram(report)
     return jsonify({"ok": True})
 
 @app.route("/trigger_report", methods=["GET", "POST"])
 def trigger_report():
-    success = send_telegram(make_report())
+    """Cron-job.org вызывает этот URL каждый день в 08:00"""
+    report = make_report()
+    success = send_telegram(report)
     return jsonify({"ok": success, "time": datetime.now().isoformat()})
 
 if __name__ == "__main__":
